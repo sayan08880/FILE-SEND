@@ -1,168 +1,178 @@
-# HULK SEND v1 – Advanced Local File Transfer
+HULK SEND — Local File Sharing Server (V1 + V2)
 
-A feature-rich local network file sharing server with browser interface.
+A lightweight and high-performance local file sharing server built using pure Python.
 
-## Core Capabilities
+It allows file transfer between devices connected to the same Wi-Fi network without using the internet, cloud services, or external applications.
 
-- Username and password authentication with session cookies
-- Optional HTTPS using auto-generated self-signed certificate
-- Folder upload with directory structure preservation
-- Drag-and-drop support for files and entire folders
-- Upload queue with individual file progress, pause, resume and cancel
-- Media preview for images and playable video files
-- Rename and delete files directly from the web interface
-- Streaming upload to disk with very low memory usage
-- QR code display for quick mobile access
-- Responsive dark-themed interface
+Overview
 
-## Main Differences Compared to v2
+HULK SEND runs a local HTTP server and provides a web-based interface with the following capabilities:
 
-Feature                            | v1          | v2
------------------------------------|-------------|------
-Authentication                    | Yes         | No
-HTTPS (self-signed)               | Yes         | No
-Folder upload with structure      | Yes         | No
-Upload queue + pause/resume       | Yes         | No
-Per-file progress bars            | Yes         | No (only total)
-Image and video preview           | Yes         | No
-Code length and complexity        | Higher      | Much lower
+Upload files (no size limit)
 
-## Requirements
+Download files
 
-- Python 3.8 or newer
-- Optional: segno library for better QR codes (pip install segno)
+Rename files
 
-## Quick Start
+Delete files
 
-1. Place the script in any folder
-2. (optional) Set custom credentials
+Access from both desktop and mobile browsers
 
-   ```bash
-   export HULK_USER="yourname"
-   export HULK_PASS="yourpassword"
+Versions
+Version 1 — Basic
 
-(optional) Disable authenticationBashexport HULK_AUTH=0
-Run the scriptBashpython SEND_V1.py
+A simple and efficient implementation focused on performance and stability.
 
-The console will show:
+Features
 
-Local address
-Network address for other devices
-Optional HTTPS address if certificate was created
+Streaming file upload (low memory usage)
 
-Open the network address from phone or other computer on the same Wi-Fi.
-Storage Location
-All uploaded files are saved in the folder named HULK next to the script.
-Certificate Files
-If openssl is installed, the script automatically creates:
+No file size limit
 
-hulk_cert.pem
-hulk_key.pem
+Upload and download support
 
-These are used for the optional HTTPS server.
-Security Information
+Rename and delete files
 
-Intended for local network (LAN) use only
-Self-signed certificate triggers browser warning
-Authentication uses simple SHA-256 hashing
-No protection against internet exposure
+Automatic browser launch
 
-License
-MIT
-text### README for simple version (SEND_V2.py)
-HULK SEND v2 – Minimal Local File Transfer
-A very simple, lightweight local network file sharing server.
-Core Capabilities
+QR code for mobile access
 
-Streaming upload directly to disk (almost constant memory usage)
-No practical file size limit
-Rename and delete files from browser
-QR code for easy phone access
-Single-file progress bar during upload
-Clean dark interface
-Zero external dependencies
+Suitable For
 
-Main Differences Compared to v1
+Large file transfers
 
+Low-resource systems
 
+Quick and simple usage
 
+Version 2 — Advanced
 
+An extended version with security and enhanced functionality.
 
+Features
 
+Includes all Version 1 features
 
+User authentication system
 
+HTTPS support (self-signed certificate)
 
+Session-based login handling
 
+Image and video preview support
 
+Secure file handling with path validation
 
+Environment-based credential configuration
 
+Optional authentication toggle
 
+Default Credentials
 
+Username: hulk
+Password: smash
 
+How It Works
 
+Starts a local server on the host machine
 
+Automatically detects the local IP address
 
+Provides a browser-based interface
 
+Allows access from:
 
+Local machine via localhost
 
+Other devices via local IP
 
+Project Structure
+HULK SEND/
+│
+├── SEND_V1.py
+├── SEND_V2.py
+└── HULK/        (auto-created shared directory)
+Usage
+Run Version 1
+python SEND_V1.py
+Run Version 2
+python SEND_V2.py
+Access from Mobile Device
 
+After running the server, open the following in your browser:
 
+http://YOUR_LOCAL_IP:PORT
 
+Example:
 
+http://192.168.1.5:8080
 
+Requirements:
 
+Both devices must be connected to the same Wi-Fi network
 
+Firewall settings must allow incoming connections
 
+Authentication (Version 2 Only)
 
+Configure using environment variables:
 
+export HULK_USER=your_username
+export HULK_PASS=your_password
+export HULK_AUTH=1
 
+Disable authentication:
 
+export HULK_AUTH=0
+HTTPS Support (Version 2)
 
+Automatically generates a self-signed SSL certificate
 
+Runs on port 8443 (or next available port)
 
+Note: Browsers may show a security warning due to the self-signed certificate.
 
+Configuration
+Setting	Default Value
+Port	8080
+HTTPS Port	8443
+Share Directory	./HULK
+Chunk Size	8 MB
+API Endpoints
+Endpoint	Method	Description
+/upload	POST	Upload file
+/download	GET	Download file
+/delete	POST	Delete file
+/rename	POST	Rename file
+/files	GET	List files
+/login	POST	Login (V2 only)
+Design Concept
 
+The system uses a streaming upload mechanism:
 
+Files are written directly to disk during upload
 
+Memory usage remains constant
 
+Efficient for handling very large files
 
+Limitations
 
-Featurev1v2AuthenticationYesNoHTTPS supportYesNoFolder uploadYesNoUpload queue with pause/resumeYesNoMedia previewYesNoIndividual file progressYesNoCode simplicityModerateVery high
-Requirements
+Works only within a local network
 
-Python 3.6 or newer
-No additional packages needed
+HTTPS uses a self-signed certificate
 
-Quick Start
+No internet-based file transfer
 
-Place the script in any folder
-Run itBashpython SEND_V2.py
+Version Comparison
+Use Case	Recommended Version
+Simple file sharing	Version 1
+Secure file sharing	Version 2
+Low-resource system	Version 1
+Feature-rich usage	Version 2
+Conclusion
 
-Console output will show:
+Version 1 provides a fast and simple solution for local file transfer.
+Version 2 adds security and advanced features for more controlled usage.
 
-Local address
-Network address
-
-Open the network address from any device on the same Wi-Fi network.
-Storage Location
-All files are saved in the folder named HULK next to the script.
-Security Information
-
-No authentication – anyone on the same network can access
-Designed only for temporary local sharing
-Never expose to the public internet
-
-When to Choose v2
-
-You want the smallest possible code to understand or modify
-You do not need login protection
-You prefer zero dependencies
-You run on restricted or older Python environments
-
-License
-MIT
-textBoth versions are now written without emojis, without excessive bullet lists, and in a consistent plain-text + table style suitable for GitHub README files.  
-You can copy each block directly into its own `README.md` file.
-
-Let me know if you want any section expanded, shortened, or merged differently.
+Both versions are designed to be efficient and easy to use depending on the requirement.
