@@ -1,178 +1,211 @@
-HULK SEND — Local File Sharing Server (V1 + V2)
+# HULK SEND — Local File Sharing Server (V1 + V2)
 
-A lightweight and high-performance local file sharing server built using pure Python.
+A lightweight local file sharing server built using Python.
+It enables seamless file transfer between devices on the same Wi-Fi network — without using the internet or cloud services.
 
-It allows file transfer between devices connected to the same Wi-Fi network without using the internet, cloud services, or external applications.
+---
 
-Overview
+## Overview
 
-HULK SEND runs a local HTTP server and provides a web-based interface with the following capabilities:
+HULK SEND runs a local HTTP server and provides a browser-based interface to:
 
-Upload files (no size limit)
+* Upload files (no size limit)
+* Download files
+* Rename files
+* Delete files
+* Access from desktop and mobile devices
 
-Download files
+---
 
-Rename files
+## Versions
 
-Delete files
+### Version 1 — Basic
 
-Access from both desktop and mobile browsers
+A simple and efficient version focused on performance.
 
-Versions
-Version 1 — Basic
+**Features:**
 
-A simple and efficient implementation focused on performance and stability.
+* Streaming upload (low memory usage)
+* No file size limit
+* Upload and download support
+* Rename and delete files
+* Automatic browser launch
+* QR code access
 
-Features
+**Use Case:**
+Best for fast and simple file sharing.
 
-Streaming file upload (low memory usage)
+---
 
-No file size limit
+### Version 2 — Advanced
 
-Upload and download support
+Includes all Version 1 features with added security and enhancements.
 
-Rename and delete files
+**Features:**
 
-Automatic browser launch
+* Authentication system
+* HTTPS support (self-signed certificate)
+* Session-based login
+* Image and video preview
+* Secure file handling (path validation)
+* Environment-based credentials
+* Optional authentication toggle
 
-QR code for mobile access
+**Default Credentials:**
 
-Suitable For
+* Username: `hulk`
+* Password: `smash`
 
-Large file transfers
+**Use Case:**
+Best for secure and feature-rich usage.
 
-Low-resource systems
+---
 
-Quick and simple usage
+## How It Works
 
-Version 2 — Advanced
+* Starts a local server on the host machine
+* Detects the local IP address
+* Provides a web interface
 
-An extended version with security and enhanced functionality.
+**Accessible via:**
 
-Features
+* `localhost` (same device)
+* Local IP (other devices on same Wi-Fi)
 
-Includes all Version 1 features
+---
 
-User authentication system
+## Project Structure
 
-HTTPS support (self-signed certificate)
-
-Session-based login handling
-
-Image and video preview support
-
-Secure file handling with path validation
-
-Environment-based credential configuration
-
-Optional authentication toggle
-
-Default Credentials
-
-Username: hulk
-Password: smash
-
-How It Works
-
-Starts a local server on the host machine
-
-Automatically detects the local IP address
-
-Provides a browser-based interface
-
-Allows access from:
-
-Local machine via localhost
-
-Other devices via local IP
-
-Project Structure
+```
 HULK SEND/
 │
 ├── SEND_V1.py
 ├── SEND_V2.py
-└── HULK/        (auto-created shared directory)
-Usage
-Run Version 1
+└── HULK/        # Shared directory (auto-created)
+```
+
+---
+
+## Usage
+
+### Run Version 1
+
+```bash
 python SEND_V1.py
-Run Version 2
+```
+
+### Run Version 2
+
+```bash
 python SEND_V2.py
-Access from Mobile Device
+```
 
-After running the server, open the following in your browser:
+---
 
+## Access from Mobile
+
+Open in browser:
+
+```
 http://YOUR_LOCAL_IP:PORT
+```
 
-Example:
+**Example:**
 
+```
 http://192.168.1.5:8080
+```
 
-Requirements:
+**Requirements:**
 
-Both devices must be connected to the same Wi-Fi network
+* Same Wi-Fi network
+* Firewall allows connections
 
-Firewall settings must allow incoming connections
+---
 
-Authentication (Version 2 Only)
+## Authentication (Version 2 Only)
 
-Configure using environment variables:
+### Enable Authentication
 
+```bash
 export HULK_USER=your_username
 export HULK_PASS=your_password
 export HULK_AUTH=1
+```
 
-Disable authentication:
+### Disable Authentication
 
+```bash
 export HULK_AUTH=0
-HTTPS Support (Version 2)
+```
 
-Automatically generates a self-signed SSL certificate
+---
 
-Runs on port 8443 (or next available port)
+## HTTPS Support (Version 2)
 
-Note: Browsers may show a security warning due to the self-signed certificate.
+* Automatically generates a self-signed SSL certificate
+* Runs on port `8443` (or next available port)
 
-Configuration
-Setting	Default Value
-Port	8080
-HTTPS Port	8443
-Share Directory	./HULK
-Chunk Size	8 MB
-API Endpoints
-Endpoint	Method	Description
-/upload	POST	Upload file
-/download	GET	Download file
-/delete	POST	Delete file
-/rename	POST	Rename file
-/files	GET	List files
-/login	POST	Login (V2 only)
-Design Concept
+**Note:**
+Browser warnings are expected due to self-signed certificates.
 
-The system uses a streaming upload mechanism:
+---
 
-Files are written directly to disk during upload
+## Configuration
 
-Memory usage remains constant
+* Default Port: `8080`
+* HTTPS Port: `8443`
+* Shared Folder: `./HULK`
+* Chunk Size: `8 MB`
 
-Efficient for handling very large files
+---
 
-Limitations
+## API Endpoints
 
-Works only within a local network
+| Endpoint  | Method | Description     |
+| --------- | ------ | --------------- |
+| /upload   | POST   | Upload file     |
+| /download | GET    | Download file   |
+| /delete   | POST   | Delete file     |
+| /rename   | POST   | Rename file     |
+| /files    | GET    | List files      |
+| /login    | POST   | Login (V2 only) |
 
-HTTPS uses a self-signed certificate
+---
 
-No internet-based file transfer
+## Design
 
-Version Comparison
-Use Case	Recommended Version
-Simple file sharing	Version 1
-Secure file sharing	Version 2
-Low-resource system	Version 1
-Feature-rich usage	Version 2
-Conclusion
+* Uses a streaming upload mechanism
+* Files are written directly to disk
+* Memory usage remains constant
 
-Version 1 provides a fast and simple solution for local file transfer.
-Version 2 adds security and advanced features for more controlled usage.
+**Result:**
+Efficient handling of large file transfers.
 
-Both versions are designed to be efficient and easy to use depending on the requirement.
+---
+
+## Limitations
+
+* Works only on local network
+* No internet-based transfer
+* HTTPS uses self-signed certificate
+
+---
+
+## Version Comparison
+
+| Use Case            | Recommended |
+| ------------------- | ----------- |
+| Simple file sharing | Version 1   |
+| Secure sharing      | Version 2   |
+| Low-resource system | Version 1   |
+| Advanced features   | Version 2   |
+
+---
+
+## Summary
+
+* **Version 1:** Simple and fast
+* **Version 2:** Secure and feature-rich
+
+---
