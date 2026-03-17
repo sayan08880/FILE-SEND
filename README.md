@@ -1,170 +1,275 @@
-# FileBeam v2 – Local File Sharing Server
+# HULK SEND – Local File Sharing Server
 
-A simple, fast, and lightweight **local file sharing server** built with pure Python.
-No external frameworks. No setup complexity. Just run and share files instantly across devices on the same network.
+A high-performance local file sharing server built using pure Python.
+It allows you to transfer files between devices on the same Wi-Fi network without using the internet, external apps, or cloud services.
 
 ---
 
-## Features
+## Overview
 
-* Upload multiple files via browser
-* Download files from any device
-* Rename files directly from UI
-* Delete files instantly
-* QR code for quick mobile access
+HULK SEND runs a lightweight HTTP server on your machine and provides a clean web interface to:
+
+* Upload files (no size limit)
+* Download files
+* Rename files
+* Delete files
+
+It is optimized for large file transfers using a streaming upload system, which ensures minimal memory usage.
+
+---
+
+## Key Features
+
+* No file size limit (streaming upload)
 * Works on any device (PC, Android, iOS)
-* No internet required (LAN only)
-* Clean and modern UI
+* No internet required (LAN-based)
+* QR code for quick mobile access
+* Clean and responsive UI
+* File management (upload, download, rename, delete)
+* Automatic local IP detection
+* Runs on available port automatically
 
 ---
 
 ## How It Works
 
-* Starts a local HTTP server
-* Automatically finds your **local IP**
-* Generates a **QR code + URL**
-* Access from phone or other devices on same Wi-Fi
-* Files are stored in a local folder: `./shared_files`
+### 1. Server Initialization
+
+When you run the script:
+
+* It finds a free port starting from `8080`
+* Detects your local IP address
+* Starts a multi-threaded HTTP server
+
+```python
+server = http.server.ThreadingHTTPServer(("0.0.0.0", ACTIVE_PORT), FileShareHandler)
+```
+
+This allows multiple devices to connect simultaneously.
+
+---
+
+### 2. Local Network Access
+
+You get two URLs:
+
+* PC: `http://localhost:PORT`
+* Mobile: `http://YOUR_LOCAL_IP:PORT`
+
+Any device connected to the same Wi-Fi can access the server using the mobile URL.
+
+---
+
+### 3. File Upload (Streaming System)
+
+This is the core strength of the project.
+
+Instead of loading the entire file into memory, it:
+
+* Reads the file in chunks (`8 MB`)
+* Writes directly to disk
+* Keeps RAM usage constant
+
+```python
+CHUNK_SIZE = 8 * 1024 * 1024
+```
+
+The function responsible:
+
+```python
+stream_multipart_to_disk(...)
+```
+
+#### Why this matters:
+
+* You can upload very large files (GBs)
+* No memory crash
+* Stable performance
+
+---
+
+### 4. Multipart Parsing
+
+The server manually parses `multipart/form-data`:
+
+* Detects boundaries
+* Extracts file metadata
+* Streams content safely to disk
+
+No use of `cgi` or external libraries.
+
+---
+
+### 5. File Storage
+
+All uploaded files are stored in:
+
+```bash
+./HULK
+```
+
+You can also manually copy files into this folder, and they will appear in the UI instantly.
+
+---
+
+### 6. File Operations
+
+#### Download
+
+* Uses chunked reading (4 MB per chunk)
+* Prevents memory overload
+
+#### Rename
+
+* Validates file names
+* Prevents overwrite conflicts
+
+#### Delete
+
+* Securely removes file from disk
+
+---
+
+### 7. Frontend (UI)
+
+The interface is built using:
+
+* HTML
+* CSS (modern UI design)
+* Vanilla JavaScript
+
+#### Features:
+
+* Drag & drop upload
+* Upload progress bar
+* Live file list refresh (AJAX)
+* Rename inline editing
+* Responsive design
+
+---
+
+### 8. QR Code System
+
+* Generates QR code for mobile access
+* Uses `segno` (optional)
+
+If not installed, a fallback SVG is shown.
+
+---
+
+## Project Structure
+
+```bash
+.
+├── your_script.py
+├── HULK/
+```
+
+---
+
+## Configuration
+
+You can modify these values:
+
+```python
+PREFERRED_PORT = 8080
+SHARE_DIR = Path("./HULK")
+CHUNK_SIZE = 8 * 1024 * 1024
+```
 
 ---
 
 ## Requirements
 
 * Python 3.7+
-* Optional (for QR code):
 
-  ```bash
-  pip install segno
-  ```
-
----
-
-## Run the Project
+Optional:
 
 ```bash
-python your_script_name.py
+pip install segno
 ```
 
 ---
 
-## Access URLs
+## Running the Project
 
-After running, you’ll see:
-
-```
-PC:     http://localhost:PORT
-Phone:  http://YOUR_LOCAL_IP:PORT
+```bash
+python your_script.py
 ```
 
-Open the **Phone URL** on other devices (same Wi-Fi)
+After running, open:
 
----
-
-## Project Structure
-
-```
-.
-├── your_script.py
-├── shared_files/
+```bash
+http://localhost:PORT
 ```
 
----
+or on mobile:
 
-## Upload Files
-
-* Drag & drop files into the UI
-* Or click to select files
-* Supports multiple uploads
-
----
-
-## Download Files
-
-* Click **Download** button next to any file
-
----
-
-## Rename Files
-
-* Click **Rename**
-* Enter new name
-* Save instantly
-
----
-
-## Delete Files
-
-* Click **Delete**
-* Confirm action
+```bash
+http://YOUR_LOCAL_IP:PORT
+```
 
 ---
 
 ## Security Notes
 
-* Only accessible within your local network
-* No authentication (use in trusted networks only)
-* Filenames are sanitized for safety
+* Only works within local network
+* No authentication system
+* Do not expose to public internet
+* Filenames are sanitized to prevent path traversal
 
 ---
 
-## Technical Highlights
+## Performance Highlights
 
-* Built using `http.server` (no frameworks)
-* Custom multipart/form-data parser (no `cgi`)
-* Dynamic HTML rendering
-* AJAX-based file operations
-* Streaming file download (memory efficient)
-
----
-
-## Customization
-
-You can modify:
-
-```python
-PREFERRED_PORT = 8080
-SHARE_DIR = Path("./shared_files")
-```
+* Constant RAM usage regardless of file size
+* Multi-threaded request handling
+* Efficient disk streaming
+* Minimal dependencies
 
 ---
 
 ## Limitations
 
 * No user authentication
-* Not suitable for public internet exposure
-* Basic file management only
+* No encryption (HTTP only)
+* No file preview
+* Not designed for public hosting
 
 ---
 
-## Future Improvements (Ideas)
+## Future Improvements
 
-* User authentication
-* Drag & drop folder upload
-* Progress persistence
-* Dark/light theme toggle
-* File preview (images/videos)
-
----
-
-## License
-
-Free to use and modify.
+* Authentication system
+* HTTPS support
+* File preview (images, videos)
+* Upload pause/resume
+* Folder upload support
+* Drag & drop multiple folders
 
 ---
 
-## Author
+## Use Cases
 
-Built with simplicity in mind.
-Feel free to improve and share.
+* Transfer files between phone and PC
+* Share large files quickly over Wi-Fi
+* Offline file sharing
+* Development/testing of HTTP systems
 
 ---
 
-## Support
+## Conclusion
 
-If this helped you:
+HULK SEND is designed to be simple, fast, and reliable.
+It focuses on solving real file transfer problems without unnecessary complexity.
 
-* Star the repo
-* Share with others
-* Contribute improvements
+---
+
+## Contact
+
+If you want improvements or collaboration:
+
+Email: [dasguptasayan.080@gmail.com](mailto:dasguptasayan.080@gmail.com)
+Mobile & WhatsApp: +91 6290688153
 
 ---
