@@ -9,15 +9,16 @@ import re
 import threading
 import webbrowser
 import time
+import os
+import tempfile
 from pathlib import Path
-from email import message_from_bytes
-from email.policy import HTTP
-import io
 
 # ── Config ────────────────────────────────────────────────────────────────────
 PREFERRED_PORT = 8080
 SHARE_DIR = Path("./HULK")
 SHARE_DIR.mkdir(exist_ok=True)
+
+CHUNK_SIZE = 8* 1024 * 1024  
 
 # ── Utilities ─────────────────────────────────────────────────────────────────
 def get_local_ip() -> str:
@@ -72,66 +73,166 @@ def file_type_label(name: str) -> str:
     return ext.lstrip(".").upper() or "File"
 
 
-def parse_multipart(headers, body: bytes) -> list:
-    """Parse multipart/form-data without cgi module."""
-    content_type = headers.get("Content-Type", "")
+# ── Streaming multipart parser ─────────────────────────────────────────────────
+# Reads the request body in chunks and writes file data straight to disk.
+# RAM usage stays at ~CHUNK_SIZE no matter how large the upload is.
+
+def stream_multipart_to_disk(rfile, content_type: str, content_length: int, dest_dir: Path) -> list[tuple[str, int]]:
+    """
+    Stream-parse a multipart/form-data body into dest_dir.
+    Returns list of (saved_filename, byte_size).
+    Never holds more than ~2× CHUNK_SIZE in memory.
+    """
     m = re.search(r'boundary=([^\s;]+)', content_type)
     if not m:
-        return []
+        raise ValueError("No boundary in Content-Type")
 
-    fake_email = (
-        f"MIME-Version: 1.0\r\nContent-Type: {content_type}\r\n\r\n"
-    ).encode() + body
+    boundary = m.group(1).encode()
+    dash_boundary = b"--" + boundary
+    final_boundary = b"--" + boundary + b"--"
 
-    msg = message_from_bytes(fake_email, policy=HTTP)
-    result = []
+    saved = []
 
-    if msg.is_multipart():
-        for part in msg.get_payload():
-            disp = part.get("Content-Disposition", "")
-            name_m = re.search(r'name="([^"]*)"', disp)
-            fname_m = re.search(r'filename="([^"]*)"', disp)
-            if name_m:
-                result.append((
-                    name_m.group(1),
-                    fname_m.group(1) if fname_m else None,
-                    part.get_payload(decode=True) or b"",
-                ))
-    return result
+    # --- read helpers ---
+    buf = b""
+
+    def read_more(n=CHUNK_SIZE):
+        nonlocal buf
+        remaining = content_length - _consumed[0]
+        if remaining <= 0:
+            return
+        to_read = min(n, remaining)
+        chunk = rfile.read(to_read)
+        _consumed[0] += len(chunk)
+        buf += chunk
+
+    _consumed = [0]
+
+    def consume(n):
+        nonlocal buf
+        buf = buf[n:]
+
+    def find_line():
+        """Find the next CRLF-terminated line in buf, reading more if needed."""
+        while True:
+            idx = buf.find(b"\r\n")
+            if idx != -1:
+                line = buf[:idx]
+                consume(idx + 2)
+                return line
+            if _consumed[0] >= content_length:
+                line = buf
+                consume(len(buf))
+                return line
+            read_more()
+
+    # Prime the buffer
+    read_more()
+
+    while True:
+        # Skip until we hit a boundary line
+        while True:
+            line = find_line()
+            if line == dash_boundary or line == final_boundary:
+                break
+            if not buf and _consumed[0] >= content_length:
+                return saved
+
+        if line == final_boundary:
+            break
+
+        # --- parse part headers ---
+        part_headers = {}
+        while True:
+            hline = find_line()
+            if hline == b"":
+                break
+            if b":" in hline:
+                k, v = hline.split(b":", 1)
+                part_headers[k.strip().lower().decode()] = v.strip().decode()
+
+        disp = part_headers.get("content-disposition", "")
+        fname_m = re.search(r'filename="([^"]*)"', disp)
+        if not fname_m:
+            # Non-file field — skip until next boundary
+            continue
+
+        filename = Path(fname_m.group(1)).name
+        if not filename:
+            continue
+
+        dest_path = dest_dir / filename
+        total_written = 0
+
+        # Write to a temp file in same dir so the rename is atomic
+        tmp_fd, tmp_path = tempfile.mkstemp(dir=dest_dir, prefix=".upload_")
+        try:
+            with os.fdopen(tmp_fd, "wb") as out:
+                # We need to write everything up to the next \r\n--boundary
+                next_boundary = b"\r\n" + dash_boundary
+                leftover = b""
+
+                while True:
+                    # Ensure enough data in buf to detect boundary
+                    while len(buf) < len(next_boundary) + 8 and _consumed[0] < content_length:
+                        read_more()
+
+                    search = leftover + buf
+                    idx = search.find(next_boundary)
+
+                    if idx != -1:
+                        # Found boundary — write up to it, then consume
+                        out.write(search[:idx])
+                        total_written += idx
+                        # Advance buf past what we consumed from it
+                        already_in_buf = len(search) - len(leftover)
+                        consume(max(0, idx - len(leftover) + len(next_boundary)))
+                        leftover = b""
+                        break
+                    else:
+                        # Boundary not found yet — safe to flush all but the
+                        # last (len(next_boundary)-1) bytes (they might straddle a chunk)
+                        safe_len = max(0, len(search) - (len(next_boundary) - 1))
+                        if safe_len > 0:
+                            out.write(search[:safe_len])
+                            total_written += safe_len
+                            consume(max(0, safe_len - len(leftover)))
+                            leftover = search[safe_len:]
+                        elif _consumed[0] >= content_length:
+                            # End of stream — flush whatever remains
+                            out.write(search)
+                            total_written += len(search)
+                            leftover = b""
+                            break
+                        else:
+                            leftover = search
+                            buf = b""
+                            read_more()
+
+        except Exception:
+            os.unlink(tmp_path)
+            raise
+
+        # Atomic replace (works on same filesystem)
+        os.replace(tmp_path, dest_path)
+        saved.append((filename, total_written))
+
+    return saved
 
 
 # ── QR Code ───────────────────────────────────────────────────────────────────
 def _qr_svg(url: str, size: int = 180) -> str:
     try:
         import segno
-        import io
-        import html
+        import io as _io
 
         qr = segno.make(url, error='h')
-
-        buf = io.BytesIO()
-        qr.save(
-            buf,
-            kind='svg',
-            scale=4.8,
-            border=0,
-            dark='black',
-            light='white',
-            xmldecl=False
-        )
-
+        buf = _io.BytesIO()
+        qr.save(buf, kind='svg', scale=4.8, border=0, dark='black', light='white', xmldecl=False)
         svg = buf.getvalue().decode('utf-8')
-
-        svg = svg.replace(
-            "<svg",
-            f'<svg width="{size}" height="{size}"',
-            1
-        )
-
+        svg = svg.replace("<svg", f'<svg width="{size}" height="{size}"', 1)
         return svg
-
     except Exception:
-
         safe_url = html.escape(url)
         return (
             f'<svg width="{size}" height="{size}" xmlns="http://www.w3.org/2000/svg">'
@@ -308,7 +409,7 @@ header{display:flex;align-items:center;gap:16px;margin-bottom:40px}
     </div>
     <div class="logo-text">
       <h1>HULK SEND</h1>
-      <div class="sub">Local Network Transfer / v2</div>
+      <div class="sub">Local Network Transfer</div>
     </div>
   </header>
 
@@ -322,7 +423,9 @@ header{display:flex;align-items:center;gap:16px;margin-bottom:40px}
       <div class="phone-steps">
         <span class="step-num">1</span> Same Wi-Fi network required<br/>
         <span class="step-num">2</span> Scan QR code <b>or</b> type the address<br/>
-        <span class="step-num">3</span> Upload and download from any device
+        <span class="step-num">3</span> Upload and download from any device<br/>
+        <span class="step-num">4</span> <b>No file size limit</b> — streams directly to disk<br/>
+        <span class="step-num">5</span> For very large files, copy to <b>HULK</b> folder directly
       </div>
     </div>
   </div>
@@ -338,7 +441,7 @@ header{display:flex;align-items:center;gap:16px;margin-bottom:40px}
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/></svg>
       </div>
       <div class="dz-title">Drop files here or click to browse</div>
-      <div class="dz-sub">Supports multiple files at once</div>
+      <div class="dz-sub">No file size limit — large files stream directly to disk</div>
       <div id="file-names">No files selected</div>
     </div>
     <div id="prog-label"></div>
@@ -506,6 +609,9 @@ def render_partial_files() -> bytes:
 
 
 class FileShareHandler(http.server.BaseHTTPRequestHandler):
+    # Increase timeout so large uploads don't get cut off mid-transfer
+    timeout = 3600  # 1 hour
+
     def log_message(self, fmt, *args):
         print(f" [{self.address_string()}] {fmt % args}")
 
@@ -551,7 +657,7 @@ class FileShareHandler(http.server.BaseHTTPRequestHandler):
             self.end_headers()
             with open(filepath, "rb") as f:
                 while True:
-                    chunk = f.read(65536)
+                    chunk = f.read(4 * 1024 * 1024) 
                     if not chunk:
                         break
                     self.wfile.write(chunk)
@@ -563,19 +669,25 @@ class FileShareHandler(http.server.BaseHTTPRequestHandler):
 
         if path == "/upload":
             try:
-                length = int(self.headers.get("Content-Length", 0))
-                body = self.rfile.read(length)
-                fields = parse_multipart(self.headers, body)
-                saved = []
-                for name, filename, data in fields:
-                    if name == "file" and filename and data:
-                        safe_name = Path(filename).name
-                        (SHARE_DIR / safe_name).write_bytes(data)
-                        saved.append(html.escape(safe_name) + f" ({human_size(len(data))})")
-                if saved:
-                    self._send_json({"ok": True, "message": "Uploaded: " + ", ".join(saved)})
+                content_length = int(self.headers.get("Content-Length", 0))
+                content_type = self.headers.get("Content-Type", "")
+
+                # ── STREAMING UPLOAD ──────────────────────────────────────────
+                # Writes directly to disk in 1 MB chunks.
+                # RAM usage is flat regardless of file size (50 MB or 50 GB).
+                saved_files = stream_multipart_to_disk(
+                    self.rfile, content_type, content_length, SHARE_DIR
+                )
+
+                if saved_files:
+                    parts = [
+                        f"{html.escape(name)} ({human_size(size)})"
+                        for name, size in saved_files
+                    ]
+                    self._send_json({"ok": True, "message": "Uploaded: " + ", ".join(parts)})
                 else:
-                    self._send_json({"ok": False, "error": "No valid file found"}, 400)
+                    self._send_json({"ok": False, "error": "No valid file found in request"}, 400)
+
             except Exception as e:
                 self._send_json({"ok": False, "error": str(e)}, 500)
 
@@ -627,17 +739,18 @@ def main():
     if ACTIVE_PORT != PREFERRED_PORT:
         print(f"Port {PREFERRED_PORT} in use → using {ACTIVE_PORT}")
 
-    server = http.server.HTTPServer(("0.0.0.0", ACTIVE_PORT), FileShareHandler)
+    server = http.server.ThreadingHTTPServer(("0.0.0.0", ACTIVE_PORT), FileShareHandler)
 
     pc_url    = f"http://localhost:{ACTIVE_PORT}"
     phone_url = f"http://{LOCAL_IP}:{ACTIVE_PORT}"
 
     print("\n" + "="*56)
-    print(" FileBeam v2 – Local File Share")
+    print(" HULK SEND – Local File Share  (streaming upload)")
     print("="*56)
     print(f"  PC:        {pc_url}")
     print(f"  Phone:     {phone_url}  ← open this one")
     print(f"  Folder:    {SHARE_DIR.resolve()}")
+    print(f"  Limit:     None  (streams straight to disk)")
     print("  Stop:      Ctrl+C")
     print("="*56 + "\n")
 
