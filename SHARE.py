@@ -120,11 +120,8 @@ def _qr_svg(url: str, size: int = 180) -> str:
             xmldecl=False
         )
 
-        # ✅ DO NOT modify viewBox
-        # Just return SVG as-is
         svg = buf.getvalue().decode('utf-8')
 
-        # Optional: inject width & height safely (no viewBox change)
         svg = svg.replace(
             "<svg",
             f'<svg width="{size}" height="{size}"',
@@ -134,7 +131,7 @@ def _qr_svg(url: str, size: int = 180) -> str:
         return svg
 
     except Exception:
-        # Fallback (no change needed here)
+
         safe_url = html.escape(url)
         return (
             f'<svg width="{size}" height="{size}" xmlns="http://www.w3.org/2000/svg">'
