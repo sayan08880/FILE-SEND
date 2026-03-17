@@ -16,7 +16,7 @@ import io
 
 # ── Config ────────────────────────────────────────────────────────────────────
 PREFERRED_PORT = 8080
-SHARE_DIR = Path("./shared_files")
+SHARE_DIR = Path("./HULK")
 SHARE_DIR.mkdir(exist_ok=True)
 
 # ── Utilities ─────────────────────────────────────────────────────────────────
