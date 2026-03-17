@@ -1,134 +1,168 @@
-HULK SEND — Local File Transfer Server
-======================================
+# HULK SEND v1 – Advanced Local File Transfer
 
-HULK SEND is a lightweight Python-based file transfer server.
-It allows you to upload, download, preview, and manage files
-across devices on the same network using a web browser.
+A feature-rich local network file sharing server with browser interface.
 
+## Core Capabilities
 
-FEATURES
---------
-- Upload multiple files or full folders
-- Mobile access via QR code
-- Optional login authentication
-- Pause / Resume uploads
-- No file size limit (streaming)
-- Image and video preview support
-- Folder structure preserved
-- Rename and delete files
-- Works over HTTP and HTTPS
-- Pure Python (no dependencies required)
+- Username and password authentication with session cookies
+- Optional HTTPS using auto-generated self-signed certificate
+- Folder upload with directory structure preservation
+- Drag-and-drop support for files and entire folders
+- Upload queue with individual file progress, pause, resume and cancel
+- Media preview for images and playable video files
+- Rename and delete files directly from the web interface
+- Streaming upload to disk with very low memory usage
+- QR code display for quick mobile access
+- Responsive dark-themed interface
 
+## Main Differences Compared to v2
 
-REQUIREMENTS
-------------
-- Python 3.8+
-- Optional: OpenSSL (for HTTPS)
+Feature                            | v1          | v2
+-----------------------------------|-------------|------
+Authentication                    | Yes         | No
+HTTPS (self-signed)               | Yes         | No
+Folder upload with structure      | Yes         | No
+Upload queue + pause/resume       | Yes         | No
+Per-file progress bars            | Yes         | No (only total)
+Image and video preview           | Yes         | No
+Code length and complexity        | Higher      | Much lower
 
+## Requirements
 
-INSTALLATION
-------------
-git clone https://github.com/your-username/hulk-send.git
-cd hulk-send
-python SEND_V2.py
+- Python 3.8 or newer
+- Optional: segno library for better QR codes (pip install segno)
 
+## Quick Start
 
-USAGE
------
-Open in browser:
-http://localhost:8080
+1. Place the script in any folder
+2. (optional) Set custom credentials
 
-From mobile (same Wi-Fi):
-http://<your-local-ip>:8080
+   ```bash
+   export HULK_USER="yourname"
+   export HULK_PASS="yourpassword"
 
-Or scan QR code shown in UI.
+(optional) Disable authenticationBashexport HULK_AUTH=0
+Run the scriptBashpython SEND_V1.py
 
+The console will show:
 
-AUTHENTICATION
---------------
-Default credentials:
-Username: hulk
-Password: smash
+Local address
+Network address for other devices
+Optional HTTPS address if certificate was created
 
-Change credentials:
-export HULK_USER=myuser
-export HULK_PASS=mypass
+Open the network address from phone or other computer on the same Wi-Fi.
+Storage Location
+All uploaded files are saved in the folder named HULK next to the script.
+Certificate Files
+If openssl is installed, the script automatically creates:
 
-Disable authentication:
-export HULK_AUTH=0
+hulk_cert.pem
+hulk_key.pem
 
+These are used for the optional HTTPS server.
+Security Information
 
-HTTPS (OPTIONAL)
-----------------
-Access:
-https://localhost:8443
+Intended for local network (LAN) use only
+Self-signed certificate triggers browser warning
+Authentication uses simple SHA-256 hashing
+No protection against internet exposure
 
-Note:
-Browser may show a warning (self-signed certificate).
+License
+MIT
+text### README for simple version (SEND_V2.py)
+HULK SEND v2 – Minimal Local File Transfer
+A very simple, lightweight local network file sharing server.
+Core Capabilities
 
+Streaming upload directly to disk (almost constant memory usage)
+No practical file size limit
+Rename and delete files from browser
+QR code for easy phone access
+Single-file progress bar during upload
+Clean dark interface
+Zero external dependencies
 
-FILE STORAGE
-------------
-All files are stored in:
-./HULK/
-
-- Folder uploads keep structure
-- Files are streamed directly to disk
-
-
-API ENDPOINTS
--------------
-/upload     POST   Upload files
-/download   GET    Download file
-/rename     POST   Rename file
-/delete     POST   Delete file
-/files      GET    Refresh file list
-/login      POST   Login
-
-
-RENAME REQUEST EXAMPLE
-----------------------
-POST /rename
-
-{
-  "old": "file.txt",
-  "new": "newname.txt"
-}
+Main Differences Compared to v1
 
 
-NOTES
------
-- Works only on same network (LAN)
-- Supports large files
-- No database used
 
 
-PREVIEW SUPPORT
----------------
-Image  : Yes
-Video  : Yes
-Others : No
 
 
-TECH STACK
-----------
-- Python (http.server)
-- HTML + CSS
-- Vanilla JavaScript
 
 
-FUTURE IMPROVEMENTS
--------------------
-- Public sharing (internet)
-- Multi-user system
-- File search and filtering
 
 
-LICENSE
--------
-MIT License
 
 
-AUTHOR
-------
-Sayan
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Featurev1v2AuthenticationYesNoHTTPS supportYesNoFolder uploadYesNoUpload queue with pause/resumeYesNoMedia previewYesNoIndividual file progressYesNoCode simplicityModerateVery high
+Requirements
+
+Python 3.6 or newer
+No additional packages needed
+
+Quick Start
+
+Place the script in any folder
+Run itBashpython SEND_V2.py
+
+Console output will show:
+
+Local address
+Network address
+
+Open the network address from any device on the same Wi-Fi network.
+Storage Location
+All files are saved in the folder named HULK next to the script.
+Security Information
+
+No authentication – anyone on the same network can access
+Designed only for temporary local sharing
+Never expose to the public internet
+
+When to Choose v2
+
+You want the smallest possible code to understand or modify
+You do not need login protection
+You prefer zero dependencies
+You run on restricted or older Python environments
+
+License
+MIT
+textBoth versions are now written without emojis, without excessive bullet lists, and in a consistent plain-text + table style suitable for GitHub README files.  
+You can copy each block directly into its own `README.md` file.
+
+Let me know if you want any section expanded, shortened, or merged differently.
