@@ -202,6 +202,16 @@ Efficient handling of large file transfers.
 | Advanced features   | Version 2   |
 
 ---
+## Important Libaris
+
+```bash
+pip install segno
+```
+```bash
+python --version
+```
+* **Python 3.8+** Minimum
+* **Python 3.10+** Best
 
 ## Summary
 
